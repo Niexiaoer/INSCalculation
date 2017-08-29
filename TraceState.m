@@ -1,4 +1,4 @@
-function [Pos_whole,Vel_whole,Att_whole,PosError_whole,VelError_whole,AttError_whole]=TraceState(IMUdata,dt)
+function [Vel_whole,Att_whole,VelError_whole,AttError_whole]=TraceState(IMUdata,dt)
     addpath('Quaternions');
     %%%%%%%%%%%%%%固定变量定义%%%%%%%%%%%%%%
     dGyro = [0;0;0];                                                       %陀螺仪固定零漂
@@ -6,7 +6,6 @@ function [Pos_whole,Vel_whole,Att_whole,PosError_whole,VelError_whole,AttError_w
     
     Vel_whole = zeros(size(IMUdata,1),3);
     Att_whole = zeros(size(IMUdata,1),3); 
-    PosError_whole = zeros(size(IMUdata,1),3); 
     VelError_whole = zeros(size(IMUdata,1),3);
     AttError_whole = zeros(size(IMUdata,1),3);
     
@@ -14,9 +13,9 @@ function [Pos_whole,Vel_whole,Att_whole,PosError_whole,VelError_whole,AttError_w
     Q_wa  = (100e-6*9.7935)^2;                                             %加速计白噪声
     Q     = diag([Q_wg Q_wg Q_wg, Q_wa Q_wa Q_wa]);                        %系统噪声协方差
     
-    G = zeros(15,6);                                                       
-    G(10:12,1:3) = eye(3,3);
-    G(13:15,4:6) = eye(3,3);
+    G = zeros(12,6);                                                       
+    G(7:9,1:3) = eye(3,3);
+    G(10:13,4:6) = eye(3,3);
     R = diag([1e-7,1e-7,1e-7]);                                            %观测方程噪声方差R
     
     Re 		= 6378245;   %地球长半径
@@ -31,15 +30,15 @@ function [Pos_whole,Vel_whole,Att_whole,PosError_whole,VelError_whole,AttError_w
     Attitude = [-0.012574316;-0.000579696;-0.0017485];
     AttitudeChaRat = [0;0;0;0];
     Position_GPS = [30.5273*pi/180;114.3551*pi/180;32.43]; 
-    ErrorState = [0;0;0;0;0;0;0;0;0;0;0;0;0;0;0];
-    ErrorConv = diag([0.0001*pi/180 0.0001*pi/180 0.1,0.1 0.1 0.1,pi/180 pi/180 pi/180,0.01*pi/180 0.01*pi/180 0.01*pi/180,0.1 0.1 0.1]);
+    ErrorState = [0;0;0;0;0;0;0;0;0;0;0;0];
+    ErrorConv = diag([0.1 0.1 0.1,pi/180 pi/180 pi/180,0.01*pi/180 0.01*pi/180 0.01*pi/180,0.1 0.1 0.1]);
     %%%%%%%%%%%%%%系统状态向量初始化%%%%%%%%%%%%%%
     
+    Rm = Re*(1-2*e+3*e*sin(Position_GPS(1))^2)+Position_GPS(3);
+    Rn = Re*(1-e*sin(Position_GPS(1))^2)+Position_GPS(3);
+    wiel = [0;wie*cos(Position_GPS(1));wie*sin(Position_GPS(1))];      %Wie在L系的表示
     for i=1:size(IMUdata,1)
         %参数赋值
-        Rm = Re*(1-2*e+3*e*sin(Position_GPS(1))^2)+Position_GPS(3);
-        Rn = Re*(1-e*sin(Position_GPS(1))^2)+Position_GPS(3);
-        wiel = [0;wie*cos(Position_GPS(1));wie*sin(Position_GPS(1))];      %Wie在L系的表示
         well = [-Velocity(2)/Rm;Velocity(1)/Rn;Velocity(1)*tan(Position_GPS(1))/Rn];%Wel在L系的表示
    
         %IMU输入变量
@@ -58,11 +57,6 @@ function [Pos_whole,Vel_whole,Att_whole,PosError_whole,VelError_whole,AttError_w
         VelocityChaRat_1 = Rbl_1*(Accb-bAcc)*g-cross_mine(2*wiel+well,Velocity)+[0;0;g];%该时刻的速度变化率
         Velocity_1 = Velocity+0.5*(VelocityChaRat+VelocityChaRat_1)*dt;    %该时刻的速度
         
-        dPosition = 0.5*(Velocity_1+Velocity)*dt;                              %位置L系变化
-        Position_GPS(3) = Position_GPS(3)+dPosition(3);                        %更新L系纬度，经度，高度坐标   
-        Position_GPS(2) = Position_GPS(2)+dPosition(2)/(Rn*cos(Position_GPS(1)));  
-        Position_GPS(1) = Position_GPS(1)+dPosition(1)/Rm;    
-        
         VelocityChaRat = VelocityChaRat_1;                                     %更新速度变化率
         Velocity = Velocity_1;                                                 %更新速度
         
@@ -76,17 +70,15 @@ function [Pos_whole,Vel_whole,Att_whole,PosError_whole,VelError_whole,AttError_w
         AttitudeChaRat = 0.5*omigalb*QA_1;                                %更新姿态四元树变化率
         
         %系统状态更新
-        Position_GPS = Position_GPS - ErrorState(1:3);
         Velocity = Velocity - ErrorState(4:6);
         Attitude = Attitude - ErrorState(7:9);
-        Pos_whole(i,:) = Position_GPS';
         Vel_whole(i,:) = Velocity';
         Att_whole(i,:) = Attitude';
         %%%%%%%%%%%%%%%%%%%%%%%惯导解算%%%%%%%%%%%%%%%%%%%%%%%%
         
         %%%%%%%%%%%%%%%%%%%%%%%科尔曼滤波%%%%%%%%%%%%%%%%%%%%%%%%    
         %连续系统状态转换阵 F 的时间更新
-        F = zeros(15,15);  
+        F = zeros(12,12);  
         F(1:3,1:3) = [0,0,-Velocity(2)/(Rm^2);
                   Velocity(1)*sin(Position_GPS(1))/(Rn*cos(Position_GPS(1))^2),0,-Velocity(1)/(Rn*Rn*cos(Position_GPS(1)));
                   0,0,0];
