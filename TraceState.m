@@ -4,7 +4,6 @@ function [Pos_whole,Vel_whole,Att_whole,PosError_whole,VelError_whole,AttError_w
     dGyro = [0;0;0];                                                       %Õ”¬›“«πÃ∂®¡„∆Ø
     bAcc = [0;0;0];                                                        %º”ÀŸ±ÌπÃ∂®¡„∆Ø
     
-    Pos_whole = zeros(size(IMUdata,1),3);
     Vel_whole = zeros(size(IMUdata,1),3);
     Att_whole = zeros(size(IMUdata,1),3); 
     PosError_whole = zeros(size(IMUdata,1),3); 
