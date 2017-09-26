@@ -4,14 +4,17 @@ close all;
 addpath('Quaternions');
 filePath = 'Datasets/imudata15.xlsx';
 IMUdata= xlsread(filePath);
-
+clc
 time = zeros(1,size(IMUdata,1));
 dt = 1/100;
 for i=1:size(IMUdata,1)
     time(i) = (i-1)*dt;
 end
-[Pos_whole,Vel_whole,Att_whole,PosError_whole,VelError_whole,AttError_whole] = TraceState(IMUdata,dt);
+
+[Vel_whole,Att_whole,VelError_whole,AttError_whole] = TraceState(IMUdata,dt);
 % Plot translational Attitude
+Att_whole = Att_whole*180/pi;
+AttError_whole = AttError_whole*180/pi;
 figure('Position', [9 39 900 300], 'NumberTitle', 'off', 'Name', 'Attitude');
 hold on;
 plot(time, Att_whole(:,1), 'r');
@@ -32,18 +35,6 @@ plot(time, Vel_whole(:,3), 'b');
 title('Velocity');
 xlabel('Time (s)');
 ylabel('Velocity (m/s)');
-legend('E', 'N', 'U');
-hold off;
-
-% Plot translational position
-figure('Position', [9 39 900 600], 'NumberTitle', 'off', 'Name', 'PositionXYZ');
-hold on;
-plot(time, Pos_whole(:,1), 'r');
-plot(time, Pos_whole(:,2), 'g');
-plot(time, Pos_whole(:,3), 'b');
-title('PositionXYZ');
-xlabel('Time (s)');
-ylabel('Position (m)');
 legend('E', 'N', 'U');
 hold off;
 
@@ -70,16 +61,3 @@ xlabel('Time (s)');
 ylabel('Velocity_error (m/s)');
 legend('E', 'N', 'U');
 hold off;
-
-% Plot translational Position_Error
-figure('Position', [9 39 900 300], 'NumberTitle', 'off', 'Name', 'Position_Error');
-hold on;
-plot(time, PosError_whole(:,1), 'r');
-plot(time, PosError_whole(:,2), 'g');
-plot(time, PosError_whole(:,3), 'b');
-title('Position_Error');
-xlabel('Time (s)');
-ylabel('Position_Error');
-legend('La', 'Lo', 'H');
-hold off;
-t = toc;
